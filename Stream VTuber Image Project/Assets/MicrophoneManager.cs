@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Linq;
 
 using UnityEngine;
 using UnityEngine.UI;
@@ -49,13 +50,19 @@ public class MicrophoneManager : MonoBehaviour {
 	public Vector3 OriginalScaleState { get; set; }
 	public Vector3 OriginalPositionState { get; set; }
 
-	private void Start() {
+	private void Awake() {
 		Application.targetFrameRate = 25;
+		Application.runInBackground = true;
 
 		image = GetComponent<Image>();
-		ImageShape = GetComponent<RectTransform>();
 		image.color = new Color(InactiveColour.r, InactiveColour.g, InactiveColour.b, 255);
-		device = Microphone.devices[0];
+		ImageShape = GetComponent<RectTransform>();
+	}
+
+	private void Start() {
+		if (string.IsNullOrEmpty(device)) {
+			device = Microphone.devices[0];
+		}
 		OriginalScaleState = transform.localScale;
 		OriginalPositionState = transform.localPosition;
 	}

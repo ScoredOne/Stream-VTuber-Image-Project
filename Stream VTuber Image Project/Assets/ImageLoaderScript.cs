@@ -31,6 +31,8 @@ public class ImageLoaderScript : MonoBehaviour
 		CreateDirectoryString();
 		UpdateDebugOut();
 		FindImageFiles(true);
+		OutputBoxOFF.RefreshShownValue();
+		OutputBoxON.RefreshShownValue();
 	}
 
 	private static void CreateDirectoryString() {
@@ -67,12 +69,15 @@ public class ImageLoaderScript : MonoBehaviour
 					OutputBoxOFF.options.Add(new Dropdown.OptionData(y));
 					OutputBoxON.options.Add(new Dropdown.OptionData(y));
 				}
-				if (OutputBoxOFF.options.Count > 0) {
-					OutputBoxOFF.value = 1;
-				}
-				if (OutputBoxON.options.Count > 0) {
-					OutputBoxON.value = 1;
-				}
+			}
+			if (StaticSaveModule.CurrentSettings != null &&
+				OutputBoxOFF.options.Any(e => e.text.Equals(StaticSaveModule.CurrentSettings.ImageOneLocation)) &&
+				OutputBoxON.options.Any(e => e.text.Equals(StaticSaveModule.CurrentSettings.ImageTwoLocation))) {
+				OutputBoxOFF.value = OutputBoxOFF.options.IndexOf(OutputBoxOFF.options.Find(e => e.text.Equals(StaticSaveModule.CurrentSettings.ImageOneLocation)));
+				OutputBoxOFF.RefreshShownValue();
+				OutputBoxON.value = OutputBoxON.options.IndexOf(OutputBoxON.options.Find(e => e.text.Equals(StaticSaveModule.CurrentSettings.ImageTwoLocation)));
+				OutputBoxON.RefreshShownValue();
+				LoadImageFile();
 			}
 		}
 	}
