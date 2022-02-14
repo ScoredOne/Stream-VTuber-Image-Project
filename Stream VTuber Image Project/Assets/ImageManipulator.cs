@@ -31,12 +31,12 @@ public class ImageManipulator : MonoBehaviour
 
 	public void UpdateScale(string x) {
 		if (float.TryParse(x, out float value)) {
-			if (value < 0) {
+			if (value < 0.00001f) {
 				value = 0.00001f;
 			}
-			ImageObject.transform.localScale = ImageObject.OriginalScaleState = ImageObject.OriginalScaleState = new Vector3(value, value, 1);
+			ImageObject.transform.localScale = ImageObject.OriginalScaleState = new Vector3(value, value, 1);
 		} else {
-			ImageObject.transform.localScale = ImageObject.OriginalScaleState = ImageObject.OriginalScaleState = new Vector3(1, 1, 1);
+			ImageObject.transform.localScale = ImageObject.OriginalScaleState = new Vector3(1, 1, 1);
 		}
 	}
 }

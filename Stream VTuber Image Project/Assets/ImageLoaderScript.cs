@@ -21,9 +21,11 @@ public class ImageLoaderScript : MonoBehaviour
 
 	private static string directory = "";
 
-	public static Texture2D OFFImageData;
+	public static Vector2 OFFImageDimensions;
+	public static Sprite OFFImageData;
 
-	public static Texture2D ONImageData;
+	public static Vector2 ONImageDimensions;
+	public static Sprite ONImageData;
 
 
 	// Start is called before the first frame update
@@ -83,10 +85,14 @@ public class ImageLoaderScript : MonoBehaviour
 	}
 
 	public void LoadImageFile() {
-		OFFImageData = LoadPNG(OutputBoxOFF.options[OutputBoxOFF.value].text);
-		ONImageData = LoadPNG(OutputBoxON.options[OutputBoxON.value].text);
-		ImageTransform.sizeDelta = new Vector2(OFFImageData.width, OFFImageData.height);
-		ImageItem.sprite = Sprite.Create(OFFImageData, new Rect(0, 0, OFFImageData.width, OFFImageData.height), Vector2.zero);
+		Texture2D offImageLoad = LoadPNG(OutputBoxOFF.options[OutputBoxOFF.value].text);
+		Texture2D onImageLoad = LoadPNG(OutputBoxON.options[OutputBoxON.value].text);
+
+		OFFImageDimensions = ImageTransform.sizeDelta = new Vector2(offImageLoad.width, offImageLoad.height);
+		OFFImageData = ImageItem.sprite = Sprite.Create(offImageLoad, new Rect(0, 0, offImageLoad.width, offImageLoad.height), Vector2.zero);
+
+		ONImageDimensions = new Vector2(onImageLoad.width, onImageLoad.height);
+		ONImageData = Sprite.Create(onImageLoad, new Rect(0, 0, onImageLoad.width, onImageLoad.height), Vector2.zero);
 	}
 
 	public static Texture2D LoadPNG(string fileName) {
@@ -100,7 +106,7 @@ public class ImageLoaderScript : MonoBehaviour
 			tex.LoadImage(fileData); //..this will auto-resize the texture dimensions.
 		}
 		else {
-			Debug.Log(fileName + "\t :File Failed");
+			Debug.Log(fileName + "\t : File Failed");
 		}
 		return tex;
 	}

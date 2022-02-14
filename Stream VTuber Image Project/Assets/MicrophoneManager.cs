@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections;
-using System.Linq;
 
 using UnityEngine;
 using UnityEngine.UI;
@@ -35,7 +34,7 @@ public class MicrophoneManager : MonoBehaviour {
 			}
 		}
 	}
-	private Action<bool> AudioTriggerChanged => e => { 
+	private Action<bool> AudioTriggerChanged => e => {
 		if (e) {
 			FadeIn();
 		} else {
@@ -51,6 +50,7 @@ public class MicrophoneManager : MonoBehaviour {
 	public Vector3 OriginalPositionState { get; set; }
 
 	private void Awake() {
+		QualitySettings.vSyncCount = 0;
 		Application.targetFrameRate = 25;
 		Application.runInBackground = true;
 
@@ -157,57 +157,34 @@ public class MicrophoneManager : MonoBehaviour {
 		float speed = 7.5f;
 		if (In) {
 			if (ImageLoaderScript.ONImageData != null) {
-				ImageShape.sizeDelta = new Vector2(ImageLoaderScript.ONImageData.width, ImageLoaderScript.ONImageData.height);
-				image.sprite = Sprite.Create(ImageLoaderScript.ONImageData, new Rect(0, 0, ImageLoaderScript.ONImageData.width, ImageLoaderScript.ONImageData.height), Vector2.zero);
+				ImageShape.sizeDelta = ImageLoaderScript.ONImageDimensions;
+				image.sprite = ImageLoaderScript.ONImageData;
 			}
 
-			transform.localScale = OriginalScaleState + new Vector3(0.02f, 0.02f, 0);
+			transform.localScale = OriginalScaleState + (new Vector3(0.02f, 0.02f, 0) * OriginalScaleState.x);
 			transform.localPosition = OriginalPositionState + new Vector3(0, 0.1f, 0);
 
-			float r = image.color.r;
-			float g = image.color.g;
-			float b = image.color.b;
-			while (r < 1 || g < 1 || b < 1) {
-				if (r < 1) {
-					r += Time.deltaTime * speed;
-				} else {
-					r = 1;
+			// 0 - 1 for data, 255 for processing
+
+			float x = (image.color.r + image.color.g + image.color.b) / 3;
+			while (x < 1) {
+				x += Time.deltaTime * speed;
+				if (x > 1) {
+					x = 1;
 				}
-				if (g < 1) {
-					g += Time.deltaTime * speed;
-				} else {
-					g = 1;
-				}
-				if (b < 1) {
-					b += Time.deltaTime * speed;
-				} else {
-					b = 1;
-				}
-				image.color = new Color(r, g, b, 1);
+				image.color = new Color(x, x, x, 1);
 				yield return false;
 			}
 			image.color = new Color(1, 1, 1, 1);
 		} else {
-			float r = image.color.r;
-			float g = image.color.g;
-			float b = image.color.b;
-			while (r > InactiveColour.r || g > InactiveColour.g || b > InactiveColour.b) {
-				if (r > InactiveColour.r) {
-					r -= Time.deltaTime * speed;
-				} else {
-					r = InactiveColour.r;
+			float x = (image.color.r + image.color.g + image.color.b) / 3;
+			float y = (InactiveColour.r + InactiveColour.g + InactiveColour.b) / 3;
+			while (x > y) {
+				x -= Time.deltaTime * speed;
+				if (x < y) {
+					x = y;
 				}
-				if (g > InactiveColour.g) {
-					g -= Time.deltaTime * speed;
-				} else {
-					g = InactiveColour.g;
-				}
-				if (b > InactiveColour.b) {
-					b -= Time.deltaTime * speed;
-				} else {
-					b = InactiveColour.b;
-				}
-				image.color = new Color(r, g, b, 1);
+				image.color = new Color(x, x, x, 1);
 				yield return false;
 			}
 			image.color = new Color(InactiveColour.r, InactiveColour.g, InactiveColour.b, 1);
@@ -216,12 +193,11 @@ public class MicrophoneManager : MonoBehaviour {
 			transform.localPosition = OriginalPositionState;
 
 			if (ImageLoaderScript.OFFImageData != null) {
-				ImageShape.sizeDelta = new Vector2(ImageLoaderScript.OFFImageData.width, ImageLoaderScript.OFFImageData.height);
-				image.sprite = Sprite.Create(ImageLoaderScript.OFFImageData, new Rect(0, 0, ImageLoaderScript.OFFImageData.width, ImageLoaderScript.OFFImageData.height), Vector2.zero);
+				ImageShape.sizeDelta = ImageLoaderScript.OFFImageDimensions;
+				image.sprite = ImageLoaderScript.OFFImageData;
 			}
 
 		}
 		ColourFader = null;
 	}
-
 }
