@@ -7,11 +7,12 @@ using UnityEngine.UI;
 [RequireComponent(typeof(RectTransform)), RequireComponent(typeof(Image))]
 public class MicrophoneManager : MonoBehaviour {
 	public Color InactiveColour;
+	public Text DBValueTextObject;
 
 	private Image image;
 	private RectTransform ImageShape;
 
-	private float MicSensitivity = -10;
+	private float MicSensitivity = 0;
 	private float dbvalue;
 
 	private string device;
@@ -20,7 +21,7 @@ public class MicrophoneManager : MonoBehaviour {
 	private AudioClip RunningAudio;
 
 	private IEnumerator ColourFader;
-	private IEnumerator DelayIEnum;
+	private IEnumerator MicChecker;
 
 	private bool MicOn;
 
@@ -28,30 +29,16 @@ public class MicrophoneManager : MonoBehaviour {
 	public bool Audiotriggered {
 		get => _audiotriggered;
 		set {
-			if (_audiotriggered != value) {
-				AudioTriggerChanged.Invoke(value);
-				_audiotriggered = value;
-			}
+			_audiotriggered = value;
+			StartFade();
 		}
 	}
-	private Action<bool> AudioTriggerChanged => e => {
-		if (e) {
-			FadeIn();
-		} else {
-			if (DelayIEnum != null) {
-				StopCoroutine(DelayIEnum);
-				DelayIEnum = null;
-			}
-			StartCoroutine(DelayIEnum = TriggerDelay());
-		}
-	};
-
 	public Vector3 OriginalScaleState { get; set; }
 	public Vector3 OriginalPositionState { get; set; }
 
 	private void Awake() {
 		QualitySettings.vSyncCount = 0;
-		Application.targetFrameRate = 25;
+		Application.targetFrameRate = 30;
 		Application.runInBackground = true;
 
 		image = GetComponent<Image>();
@@ -73,17 +60,23 @@ public class MicrophoneManager : MonoBehaviour {
 				ToggleMic(false);
 				ToggleMic(true);
 			}
-			CheckSpeaking();
+			if (MicChecker == null) {
+				StartCoroutine(MicChecker = CheckSpeaking());
+			}
+		} else {
+			Audiotriggered = false;
+			if (MicChecker != null) {
+				StopCoroutine(MicChecker);
+				MicChecker = null;
+			}
 		}
-
-		//Debug.Log($"Audiotriggered:{Audiotriggered} | DBValue:{dbvalue} | MicSensitivity:{MicSensitivity}");
 	}
 
 	public void SetSensitivity(string x) {
 		if (string.IsNullOrEmpty(x)) {
-			MicSensitivity = -10;
+			MicSensitivity = 0;
 		} else if (float.TryParse(x, out float value)) {
-			MicSensitivity = Mathf.Clamp(value, -100, 100) - 10;
+			MicSensitivity = Mathf.Clamp(value, -100, 100);
 		}
 	}
 
@@ -92,35 +85,58 @@ public class MicrophoneManager : MonoBehaviour {
 		device = Microphone.devices[value];
 	}
 
-	public void CheckSpeaking() {
+	public IEnumerator CheckSpeaking() {
+		Start:
+		yield return null;
+
 		float[] spectrum = new float[sample_size];
 
 		int mic_pos = Microphone.GetPosition(device) - (sample_size + 1);
 
-		if (mic_pos < 0 || RunningAudio == null) {
-			return;
+		if (mic_pos > 0 && RunningAudio != null) {
+
+			RunningAudio.GetData(spectrum, mic_pos);
+
+			float sum = 0;
+
+			for (int i = 0; i < spectrum.Length; i++) {
+				sum += spectrum[i] * spectrum[i];
+			}
+
+			dbvalue = Mathf.Round(20 * Mathf.Log10(Mathf.Sqrt(sum / spectrum.Length) / 0.1f));
+
+			if (dbvalue < -101) {
+				dbvalue = -101;
+			}
+
+			//if (Audiotriggered && ++count >= 3) {
+			//	count = 0;
+			//	Audiotriggered = dbvalue >= MicSensitivity;
+			//} else if (!Audiotriggered) {
+			//	Audiotriggered = dbvalue >= MicSensitivity;
+			//}
+
+			Audiotriggered = dbvalue >= MicSensitivity;
+
+			if (DBValueTextObject != null) {
+				DBValueTextObject.text = dbvalue.ToString();
+			}
+
+			if (Audiotriggered) {
+				yield return new WaitForSecondsRealtime(0.5f);
+			}
+
+			#if UNITY_EDITOR
+			Debug.Log($"Device:{device} | Audiotriggered:{Audiotriggered} | DBValue:{dbvalue} | MicSensitivity:{MicSensitivity}");
+			#endif
 		}
 
-		RunningAudio.GetData(spectrum, mic_pos);
-
-		float sum = 0;
-
-		for (int i = 0; i < spectrum.Length; i++) {
-			sum += spectrum[i] * spectrum[i];
+		if (MicOn) {
+			goto Start;
 		}
 
-		dbvalue = 20 * Mathf.Log10(Mathf.Sqrt(sum / spectrum.Length) / 0.1f);
-		if (dbvalue < -160) {
-			dbvalue = -160;
-		}
-
-		Audiotriggered = dbvalue > MicSensitivity;
-	}
-
-	private IEnumerator TriggerDelay() {
-		yield return new WaitForSeconds(0.5f);
-		FadeOut();
-		DelayIEnum = null;
+		yield return null;
+		MicChecker = null;
 	}
 
 	public void ToggleMic(bool value) {
@@ -130,32 +146,23 @@ public class MicrophoneManager : MonoBehaviour {
 		} else {
 			Microphone.End(device);
 			RunningAudio = null;
-
-			FadeOut();
+			StartFade();
 		}
 	}
 
 	// Colour //
 
-	public void FadeIn() {
-		if (ColourFader != null) {
-			StopCoroutine(ColourFader);
+	public void StartFade() {
+		if (ColourFader == null) {
+			StartCoroutine(ColourFader = Fade());
 		}
-		ColourFader = null;
-		StartCoroutine(ColourFader = Fade(true));
 	}
 
-	public void FadeOut() {
-		if (ColourFader != null) {
-			StopCoroutine(ColourFader);
-		}
-		ColourFader = null;
-		StartCoroutine(ColourFader = Fade(false));
-	}
-
-	private IEnumerator Fade(bool In) {
-		float speed = 7.5f;
-		if (In) {
+	private IEnumerator Fade() {
+		float speed = 2f;
+		Restart:
+		bool trigValue = Audiotriggered;
+		if (trigValue) {
 			if (ImageLoaderScript.ONImageData != null) {
 				ImageShape.sizeDelta = ImageLoaderScript.ONImageDimensions;
 				image.sprite = ImageLoaderScript.ONImageData;
@@ -168,24 +175,35 @@ public class MicrophoneManager : MonoBehaviour {
 
 			float x = (image.color.r + image.color.g + image.color.b) / 3;
 			while (x < 1) {
+				if (trigValue != Audiotriggered) {
+					yield return new WaitForSecondsRealtime(0.5f);
+					goto Restart;
+				}
+
 				x += Time.deltaTime * speed;
 				if (x > 1) {
 					x = 1;
 				}
 				image.color = new Color(x, x, x, 1);
-				yield return false;
+
+				yield return null;
 			}
 			image.color = new Color(1, 1, 1, 1);
 		} else {
 			float x = (image.color.r + image.color.g + image.color.b) / 3;
 			float y = (InactiveColour.r + InactiveColour.g + InactiveColour.b) / 3;
 			while (x > y) {
+				if (trigValue != Audiotriggered) {
+					goto Restart;
+				}
+
 				x -= Time.deltaTime * speed;
 				if (x < y) {
 					x = y;
 				}
 				image.color = new Color(x, x, x, 1);
-				yield return false;
+
+				yield return null;
 			}
 			image.color = new Color(InactiveColour.r, InactiveColour.g, InactiveColour.b, 1);
 
